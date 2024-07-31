@@ -7,16 +7,18 @@ import yfinance as yf
 from dotenv import load_dotenv
 import os
 
+#python -m streamlit run "agent-llm.py"
 
-# Load environment variables. Assumes that project contains .env file with API keys
 load_dotenv()
 
 client = OpenAI(api_key=os.environ['OPENAI_API_KEY'])
 
+#ativos = [“ITUB3.SA”, “VALE3.SA”, “PETR3.SA”, “^BVSP”]
 
 def get_preco_acao(ticker):
     print(ticker)
     return str(yf.Ticker(ticker).history(period='1y').iloc[-1].Close)
+
 
 def plot_preco_acao(ticker):
 
@@ -25,7 +27,7 @@ def plot_preco_acao(ticker):
     plt.plot(data.index, data.Close)
     plt.title(f"{ticker} - Cotação da Ação no Último Ano")
     plt.xlabel("Data")
-    plt.ylabel("Preço na Ação em USD")
+    plt.ylabel("Preço na Ação em BRL")
     plt.grid(True)
     plt.savefig(f'./imagens/{ticker}.png')
     plt.close()
@@ -42,7 +44,7 @@ funcoes = [
                 "properties": {
                     "ticker": {
                         "type": "string",
-                        "description": "The ticker symbol for a company stock (e.g. NVDA for NVIDIA)."
+                        "description": "The ticker symbol for a company stock in Brazil (Common shares have a 3 and preferred shares have a 4) in the format of yahoo finance library (e.g. VALE3.SA for VALE DO RIO DOCE)."
                         }
                 },
                 "required": ["ticker"]
@@ -59,7 +61,7 @@ funcoes = [
                 "properties": {
                     "ticker": {
                         "type": "string",
-                        "description": "The ticker symbol for a company stocl (e.g. NVDA for NVIDEA)."
+                        "description": "The ticker symbol for a company stock in Brazil (Common shares have a 3 and preferred shares have a 4) in the format of yahoo finance library (e.g. VALE3.SA for VALE DO RIO DOCE)"
                         }
                 },
                 "required": ["ticker"]
@@ -74,15 +76,25 @@ available_functions = {
 }
 
 if 'messages' not in st.session_state:
-    st.session_state['messages'] = []
+    st.session_state['messages'] = [
+        {
+            'role' : 'system', 
+            'content' : 'Você é um assistente de investimento que auxilia no fornecimento de informações de ações brasileiras.'}
+    ]
 
 st.title("Assistente de Investimentos")
+
+
+
+
 
 user_input = st.text_input("Pergunte: ")
 
 if user_input:
     try:
-        st.session_state['messages'].append({'role' : 'user', 'content' : f'{user_input}'})
+        st.session_state['messages'].append({
+            'role' : 'user', 
+            'content' : f'{user_input}'})
 
         response = client.chat.completions.create(
         model="gpt-3.5-turbo",
@@ -95,20 +107,25 @@ if user_input:
 
         if response_message.tool_calls:
 
-            print(response_message)
-            print(type(response_message))
+            # print(response_message)
+            # print(type(response_message))
+
 
             function_name = response_message.tool_calls[0].function.name
             function_agrs = json.loads(response_message.tool_calls[0].function.arguments)
             tool_call_id =  response_message.tool_calls[0].id
+
             print( function_name, function_agrs)
+
             if function_name in [ "get_preco_acao" ,"plot_preco_acao"] :
                 args_dict = {'ticker' : function_agrs.get('ticker')}
             function_to_call = available_functions[function_name]
             function_response = function_to_call(**args_dict)
+
+            print(function_agrs.get('ticker'))
         
             if function_name == 'plot_preco_acao':
-                st.image(f"{function_agrs.get('ticker')}.png")
+                st.image(f"./imagens/{function_agrs.get('ticker')}.png")
             else:
                 st.session_state['messages'].append(response_message)
                 st.session_state['messages'].append(
@@ -119,10 +136,12 @@ if user_input:
                         'content' : function_response
                     }
                 )
+
                 second_response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=st.session_state['messages'],
                 )
+                print(second_response.choices[0].message.content)
 
                 st.text(second_response.choices[0].message.content.strip())
                 st.session_state['messages'].append(

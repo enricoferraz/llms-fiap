@@ -10,7 +10,7 @@ import os
 import shutil
 
 CHROMA_PATH = "chroma"
-DATA_PATH = r'./receitas'
+DATA_PATH = r"./receitas"
 
 # Load environment variables. Assumes that project contains .env file with API keys
 load_dotenv()
@@ -22,6 +22,7 @@ openai.api_key = os.environ['OPENAI_API_KEY']
 
 def main():
     generate_data_store()
+
 
 
 def generate_data_store():
@@ -55,6 +56,7 @@ def save_to_chroma(chunks: list[Document]):
     # Clear out the database first.
     if os.path.exists(CHROMA_PATH):
         shutil.rmtree(CHROMA_PATH)
+
 
     # Create a new DB from the documents.
     db = Chroma.from_documents(
