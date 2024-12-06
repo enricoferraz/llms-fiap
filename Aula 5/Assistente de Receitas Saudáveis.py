@@ -58,13 +58,13 @@ def get_response_from_model(query_text):
     context_text = "\n\n---\n\n".join([doc.page_content for doc, _score in results])
     response_text = get_response_from_gpt3(query_text, context_text)
 
-    sources = [doc.metadata.get("source", None) for doc, _score in results]
-    response_with_sources = f"{response_text}\n\nFontes: {sources[0]}"
-    return response_with_sources, sources
+   
+    response_with_sources = f"{response_text}\n\n"
+    return response_with_sources
 
 def on_input_change():
     user_input = st.session_state.user_input
-    response_text, sources = get_response_from_model(user_input)
+    response_text = get_response_from_model(user_input)
     st.session_state.past.append(user_input)
     st.session_state.generated.append({"type": "normal", "data": response_text})
 
